@@ -31,13 +31,13 @@ jobs:
       - name: Install Python dependencies
         run: pip install -r requirements.txt
 
-      # الخطوة 5: بناء ملف الـ APK باستخدام أمر Flet
+      # الخطوة 5: بناء ملف الـ APK باستخدام الأمر الأساسي
       - name: Build APK
-        run: flet build apk --build-name "1.0.${{ github.run_number }}" --build-number ${{ github.run_number }}
+        run: flet build apk
 
       # الخطوة 6: رفع ملف الـ APK الناتج كـ "artifact" لكي تتمكن من تحميله
       - name: Upload APK artifact
-        uses: actions/upload-artifact@v4 # <-- تم التحديث إلى الإصدار v4
+        uses: actions/upload-artifact@v4
         with:
           name: app-release-apk
           path: build/apk/*.apk
