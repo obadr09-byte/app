@@ -1,0 +1,43 @@
+# اسم الـ Workflow الذي سيظهر في تبويب Actions
+name: Build Flet APK
+
+# متى يتم تشغيل هذا الـ Workflow
+on:
+  push:
+    branches: [ "main" ] # يعمل عند رفع أي تحديث للفرع الرئيسي
+
+# الوظائف التي سيتم تنفيذها
+jobs:
+  build:
+    # سيتم تشغيل هذه الوظيفة على جهاز افتراضي بنظام Ubuntu
+    runs-on: ubuntu-latest
+
+    steps:
+      # الخطوة 1: تحميل كود المشروع من المستودع إلى الجهاز الافتراضي
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # الخطوة 2: تثبيت Flutter SDK (لأن Flet يعتمد عليه)
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      # الخطوة 3: تثبيت متطلبات Flet لبناء تطبيقات أندرويد
+      - name: Install Flet requirements
+        run: pip install flet --pre
+
+      # الخطوة 4: تثبيت مكتبات بايثون من ملف requirements.txt
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      # الخطوة 5: بناء ملف الـ APK باستخدام أمر Flet
+      - name: Build APK
+        run: flet build apk --build-name "1.0.${{ github.run_number }}" --build-number ${{ github.run_number }}
+
+      # الخطوة 6: رفع ملف الـ APK الناتج كـ "artifact" لكي تتمكن من تحميله
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: app-release-apk
+          path: build/apk/*.apk
