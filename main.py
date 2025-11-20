@@ -13,11 +13,11 @@ import os
 # 1. الإعدادات وقائمة المنتجات (تبقى كما هي)
 # ==============================================================================
 
-# إعدادات Supabase (نفس الإعدادات القديمة)
+# إعدادات Supabase
 SUPABASE_URL = "https://dtklpugpwejrjnkxdkhh.supabase.co"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR0a2xwdWdwd2Vqcmpua3hka2hoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIwOTg0OTEsImV4cCI6MjA3NzY3NDQ5MX0.ZUPzyPWPzZBabr3HjBtg08Fccm6Kq_hRd-9V8muk57Y"
 
-# قائمة المنتجات (نفس القائمة القديمة)
+# قائمة المنتجات
 PRODUCTS_LIST = [
     {"name": "حبوب لقاح", "type": "gram", "price_per_gram": 10},
     {"name": "غذاء ملكات بلدي", "type": "gram", "price_per_gram": 35},
@@ -56,22 +56,19 @@ class InvoiceTab:
         self.customer_list = []
         self.selected_customer_id = None
         self.shipping_rates = {}
-        self.selected_cart_row = None # سيحتوي على كائن الصف المحدد
+        self.selected_cart_row = None
 
-        # --- قواميس المنتجات (تبقى كما هي) ---
+        # --- قواميس المنتجات ---
         self.PRODUCTS_DICT = {item['name']: item for item in PRODUCTS_LIST}
         self.PRODUCT_NAMES = sorted([item['name'] for item in PRODUCTS_LIST])
         
         # --- تهيئة عناصر الواجهة ---
         self._initialize_controls()
-
-        # --- تحميل البيانات الأولية ---
-        self.load_shipping_rates()
-        self.refresh_customers_dropdown()
-        threading.Thread(target=self.update_invoice_id_label, daemon=True).start()
+        
+        # ⭐️ ملاحظة: تم حذف تحميل البيانات من هنا لتجنب تجميد التطبيق عند البدء
 
     def _initialize_controls(self):
-        # --- عناصر واجهة Flet ---
+        # (هذه الدالة تبقى كما هي بدون تغيير)
         self.customer_combobox = ft.Dropdown(
             label="اختر عميل حالي أو ابحث", options=[ft.dropdown.Option("عميل جديد...")], on_change=self.on_invoice_customer_select,
         )
@@ -117,9 +114,8 @@ class InvoiceTab:
         
         self.status_bar = ft.SnackBar(content=ft.Text(""), bgcolor=ft.Colors.BLUE)
 
-
     def build(self):
-        # ... (باقي دالة build تبقى كما هي بدون تغيير)
+        # (هذه الدالة تبقى كما هي بدون تغيير)
         left_column = ft.Column(
             controls=[
                 ft.Container(
@@ -144,7 +140,6 @@ class InvoiceTab:
             ],
             scroll=ft.ScrollMode.AUTO, expand=True
         )
-
         right_column = ft.Column(
             controls=[
                  ft.Row([
@@ -177,7 +172,6 @@ class InvoiceTab:
             ],
             expand=True
         )
-
         main_layout = ft.Column(
             controls=[
                 ft.ResponsiveRow(
@@ -196,6 +190,7 @@ class InvoiceTab:
         )
         return main_layout
     
+    # ... باقي الدوال تبقى كما هي ...
     def on_product_select(self, e):
         choice = self.product_combobox.value
         prod = self.PRODUCTS_DICT.get(choice)
@@ -411,7 +406,6 @@ class InvoiceTab:
             self.send_invoice_to_telegram(inv_id)
             
             if show_receipt:
-                # Use page.run_thread for UI updates from thread
                 self.page.run_thread(target=self._show_receipt_dialog, args=(inv_id,))
             
             self.on_success(inv_id)
@@ -488,11 +482,9 @@ class InvoiceTab:
 """
 
     def clear_order_event(self, e):
-        """This function is called by the 'Clear' button click event."""
         self.clear_order()
 
     def clear_order(self):
-        """This function contains the logic to clear the form."""
         self.current_order_items.clear()
         self.current_total_price = 0.0
         self.current_shipping_cost = 0.0
@@ -515,7 +507,7 @@ class InvoiceTab:
         self.status_bar.content = ft.Text(message)
         self.status_bar.bgcolor = Colors_map.get(color, ft.Colors.BLUE_ACCENT)
         self.status_bar.open = True
-        self.page.update()
+        if hasattr(self, 'page'): self.page.update()
 
     def on_success(self, inv_id):
         self.show_message(f"✅ تم حفظ الفاتورة بنجاح برقم {inv_id}", "green")
@@ -524,7 +516,6 @@ class InvoiceTab:
 
     def update_invoice_id_label(self):
         try:
-            # استخدام count='exact' يمكن أن يكون أبطأ، نستخدم الطريقة الأسرع
             r = self.supabase.table('invoices').select('invoice_id').order('invoice_id', desc=True).limit(1).execute()
             n = r.data[0]['invoice_id'] + 1 if r.data else 1
             self.next_invoice_id_label.value = f"#{n}"
@@ -540,15 +531,23 @@ def main(page: ft.Page):
     page.title = "نظام إدارة الفواتير والمخزون"
     page.rtl = True
     page.theme_mode = ft.ThemeMode.DARK
-    page.scroll = ft.ScrollMode.ADAPTIVE
     page.padding = 0
 
+    # عرض شاشة تحميل أولية
+    loading_indicator = ft.Column([ft.ProgressRing(), ft.Text("...جاري الاتصال بقاعدة البيانات")], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER, expand=True)
+    page.add(loading_indicator)
+    page.update()
+
+    # ⭐️ الخطوة 1: الاتصال بقاعدة البيانات
     try:
         supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
     except Exception as e:
+        page.clean()
         page.add(ft.Text(f"❌ فشل الاتصال بقاعدة البيانات: {e}", color=ft.Colors.RED))
+        page.update()
         return
 
+    # ⭐️ الخطوة 2: تهيئة الواجهة الرئيسية
     invoice_manager = InvoiceTab(supabase)
     invoice_manager.page = page
     page.snack_bar = invoice_manager.status_bar
@@ -557,26 +556,29 @@ def main(page: ft.Page):
         selected_index=0,
         animation_duration=300,
         tabs=[
-            ft.Tab(
-                text="🧾 فاتورة جديدة", icon=ft.Icons.ADD_CARD, content=invoice_manager.build()
-            ),
-            ft.Tab(
-                text="🗃️ تصدير وطباعة", icon=ft.Icons.PRINT, content=ft.Container(content=ft.Text("سيتم بناء هذه الواجهة لاحقاً", size=20), alignment=ft.alignment.center)
-            ),
-            ft.Tab(
-                text="✏️ تعديل الفواتير", icon=ft.Icons.EDIT, content=ft.Container(content=ft.Text("سيتم بناء هذه الواجهة لاحقاً", size=20), alignment=ft.alignment.center)
-            ),
-             ft.Tab(
-                text="📦 إدارة المخزون", icon=ft.Icons.INVENTORY, content=ft.Container(content=ft.Text("سيتم بناء هذه الواجهة لاحقاً", size=20), alignment=ft.alignment.center)
-            ),
+            ft.Tab(text="🧾 فاتورة جديدة", icon=ft.Icons.ADD_CARD, content=invoice_manager.build()),
+            ft.Tab(text="🗃️ تصدير وطباعة", icon=ft.Icons.PRINT, content=ft.Container(content=ft.Text("سيتم بناء هذه الواجهة لاحقاً", size=20), alignment=ft.alignment.center)),
+            ft.Tab(text="✏️ تعديل الفواتير", icon=ft.Icons.EDIT, content=ft.Container(content=ft.Text("سيتم بناء هذه الواجهة لاحقاً", size=20), alignment=ft.alignment.center)),
+            ft.Tab(text="📦 إدارة المخزون", icon=ft.Icons.INVENTORY, content=ft.Container(content=ft.Text("سيتم بناء هذه الواجهة لاحقاً", size=20), alignment=ft.alignment.center)),
         ],
         expand=1,
     )
 
+    # ⭐️ الخطوة 3: عرض الواجهة الأساسية للمستخدم
+    page.clean() # إزالة مؤشر التحميل
     page.add(main_tabs)
-    page.update()
-    
-    invoice_manager.show_message("✅ تم الاتصال بقاعدة البيانات بنجاح", "green")
+    page.update() # تحديث الواجهة لتظهر للمستخدم
+
+    # ⭐️ الخطوة 4: تحميل البيانات الأولية في الخلفية
+    def load_initial_data():
+        invoice_manager.show_message("...جاري تحميل البيانات", "blue")
+        invoice_manager.load_shipping_rates()
+        invoice_manager.refresh_customers_dropdown()
+        invoice_manager.update_invoice_id_label()
+        invoice_manager.show_message("✅ تم تحميل البيانات بنجاح", "green")
+
+    # تشغيل تحميل البيانات في خيط منفصل لتجنب تجميد الواجهة
+    threading.Thread(target=load_initial_data, daemon=True).start()
 
 
 if __name__ == "__main__":
