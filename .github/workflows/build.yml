@@ -37,7 +37,7 @@ jobs:
 
       # الخطوة 6: رفع ملف الـ APK الناتج كـ "artifact" لكي تتمكن من تحميله
       - name: Upload APK artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4 # <-- تم التحديث إلى الإصدار v4
         with:
           name: app-release-apk
           path: build/apk/*.apk
